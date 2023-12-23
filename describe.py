@@ -13,7 +13,8 @@ async def camera_loop():
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
-        raise IOError("Cannot open webcam")
+        raise IOError("Cannot open webcam, is there a webcam connected?")
+    
     saved_path = False
     while True:
         ret, frame = cap.read()
