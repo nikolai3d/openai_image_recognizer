@@ -1,5 +1,4 @@
 import base64
-import requests
 import os
 import asyncio
 import aiohttp
@@ -58,7 +57,7 @@ async def play_mp3_async(file_path):
 openai_api_key = os.getenv('OPENAI_API_KEY')
 
 if openai_api_key is None:
-    print("OPENAI_API_KEY is not set in the environment variables.")
+    raise RuntimeError("OPENAI_API_KEY is not set in the environment variables.")
 else:
     print("OpenAI API Key is successfully retrieved.")
 
