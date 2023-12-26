@@ -1,6 +1,26 @@
+
+"""
+spin_styles.py
+
+This module contains utilities for handling images and image data.
+
+Functions:
+    save_image_from_url(url, save_path): Downloads an image from a given URL and saves it to a specified path.
+
+Classes:
+    ImageData: A class that holds information about an image, including remote and local URLs and original and revised prompts.
+
+Imports:
+    os, time, json, uuid, urllib: Standard library modules for various utility functions.
+    BytesIO: A class for handling binary data in memory.
+    Path: A class for handling filesystem paths.
+    Image: A module for handling image data.
+    requests: A module for making HTTP requests.
+    OpenAI: A module for interacting with the OpenAI API.
+"""
+
 import os
 import time
-import json
 import uuid
 import urllib
 from io import BytesIO
@@ -11,7 +31,7 @@ from openai import OpenAI
 
 
 def save_image_from_url(url, save_path):
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     img = Image.open(BytesIO(response.content))
     img.save(save_path)
 
@@ -26,7 +46,7 @@ class ImageData:
         self.revised_prompt = revised_prompt
 
     def download_image_sync(self, local_folder: str):
-        response = requests.get(self.remote_image_url)
+        response = requests.get(self.remote_image_url, timeout=10)
         img = Image.open(BytesIO(response.content))
 
         local_path = Path(f"{local_folder}/{uuid.uuid4()}.png")
@@ -45,6 +65,15 @@ class ImageData:
 
 
 def generate_html_table(image_data_list):
+    """
+    Generate an HTML table with image data.
+
+    Args:
+        image_data_list (list): A list of ImageData objects.
+
+    Returns:
+        str: The HTML table as a string.
+    """
     html = "<table>\n"
     html += "<tr><th>Image</th><th>Original Prompt</th><th>Revised Prompt</th></tr>\n"
 
@@ -60,7 +89,17 @@ def generate_html_table(image_data_list):
 
 
 def save_html_to_file(html_string, filename):
-    with open(filename, "w") as file:
+    """
+    Save the given HTML string to a file.
+
+    Args:
+        html_string (str): The HTML string to be saved.
+        filename (str): The name of the file to save the HTML to.
+
+    Returns:
+        None
+    """
+    with open(filename, "w", encoding="utf8") as file:
         file.write(html_string)
 
 
@@ -202,7 +241,7 @@ def spin_styles_sync(i_prompt, i_folder_path):
 
             # Download the image
             destination_path = f"{i_folder_path}/{style}.png"
-            print(f"Downloading and saving image...")
+            print("Downloading and saving image...")
 
             save_image_from_url(image_url, destination_path)
             print(f"Image {destination_path} saved.")
@@ -211,7 +250,7 @@ def spin_styles_sync(i_prompt, i_folder_path):
             print(f"Error generating image in style of {style}: {e}")
 
 
-# spin_styles_sync("Multiple Kittens of various breeds, playing in and around a Christmas tree", "./christmas_kittens_hd")
+# spin_styles_sync("Multiple  Kittens of various breeds, playing in and around a Christmas tree", "./christmas_kittens_hd")
 # spin_styles_sync("Idyllic Lake in the mountains, with a small village on its bank, during winter", "./village_lake_hd")
 # spin_styles_sync("Santa Claus driving a sleigh, reindeer pulling it, taking off from his base at the North Pole", "./santa_hd")
 # spin_styles_sync("Multiple gifts under a christmas tree, with two grey tabby cats sleeping next to them", "/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/cat_gifts_hd")
