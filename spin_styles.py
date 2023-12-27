@@ -1,4 +1,3 @@
-
 """
 spin_styles.py
 
@@ -49,6 +48,18 @@ def save_image_from_url(url, save_path):
 
 
 class ImageData:
+    """
+    Holds information about an image, including remote and local URLs and original and revised prompts.
+
+    Can be created with a remote image URL and original and revised prompts.
+
+    Attributes:
+        remote_image_url (str): The remote URL of the image.
+        local_image_absolute_path (Path): The local absolute path of the image (initally empty), filled after download_image_sync is called.
+        original_prompt (str): The original prompt used to generate the image.
+        revised_prompt (str): The revised prompt used to generate the image.
+    """
+
     def __init__(
         self, remote_image_url: str, original_prompt: str, revised_prompt: str
     ):
@@ -57,8 +68,18 @@ class ImageData:
         self.original_prompt = original_prompt
         self.revised_prompt = revised_prompt
 
+    @deal.pre(lambda _: isinstance(_.local_folder, Path))
+    @deal.pre(lambda _: len(_.file_prefix) > 0)
+    @deal.pre(lambda _: isinstance(_.file_prefix, str))
+    @deal.ensure(lambda _: _.self.local_image_absolute_path.exists())
     def download_image_sync(self, local_folder: Path, file_prefix: str):
+        """
+        Downloads an image synchronously from a remote URL and saves it locally.
 
+        Args:
+            local_folder (Path): The local folder where the image will be saved.
+            file_prefix (str): The prefix to be used for the saved image file.
+        """
         local_path = local_folder / Path(f"{file_prefix}-{uuid.uuid4()}.png")
 
         local_absolute_path = local_path.resolve()
@@ -113,7 +134,9 @@ def save_html_to_file(html_string, filename):
         file.write(html_string)
 
 
-def generate_image_sync(i_openai_client, i_prompt:str, i_folder_path:Path, i_file_prefix:str) -> ImageData:
+def generate_image_sync(
+    i_openai_client, i_prompt: str, i_folder_path: Path, i_file_prefix: str
+) -> ImageData:
     response = i_openai_client.images.generate(
         model="dall-e-3", prompt=i_prompt, size="1024x1024", quality="standard", n=1
     )
@@ -134,7 +157,7 @@ def generate_image_sync(i_openai_client, i_prompt:str, i_folder_path:Path, i_fil
     return image_data
 
 
-def spin_styles_sync(i_prompt, i_folder_path:Path):
+def spin_styles_sync(i_prompt, i_folder_path: Path):
     # Create a folder if it does not exist
     print(f"Creating folder {i_folder_path}...")
 
@@ -242,7 +265,9 @@ def spin_styles_sync(i_prompt, i_folder_path:Path):
 
         try:
             file_prefix = style.lower().replace(" ", "_")
-            new_generated_entry = generate_image_sync(client, styled_prompt, i_folder_path, file_prefix)
+            new_generated_entry = generate_image_sync(
+                client, styled_prompt, i_folder_path, file_prefix
+            )
 
             print(f"Image {new_generated_entry.local_image_absolute_path} saved.")
 
@@ -263,7 +288,10 @@ ai_client = OpenAI(
 # )
 
 
-spin_styles_sync("2 cats and a dog celebrating a birthday", Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/birthday_sd"))
+spin_styles_sync(
+    "2 cats and a dog celebrating a birthday",
+    Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/birthday_sd"),
+)
 
 # test_image_list = [test_image]
 
