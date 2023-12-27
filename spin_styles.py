@@ -28,8 +28,13 @@ from pathlib import Path
 from PIL import Image
 import requests
 from openai import OpenAI
+import deal
 
 
+@deal.pre(lambda _: _.url.startswith("http"))
+@deal.pre(lambda _: isinstance(_.url, str))
+@deal.pre(lambda _: isinstance(_.save_path, Path))
+@deal.ensure(lambda _: _.save_path.exists())
 def save_image_from_url(url, save_path):
     response = requests.get(url, timeout=10)
     img = Image.open(BytesIO(response.content))
@@ -41,27 +46,21 @@ class ImageData:
         self, remote_image_url: str, original_prompt: str, revised_prompt: str
     ):
         self.remote_image_url = remote_image_url
-        self.local_image_url = ""
+        self.local_image_absolute_path = ""
         self.original_prompt = original_prompt
         self.revised_prompt = revised_prompt
 
     def download_image_sync(self, local_folder: str):
-        response = requests.get(self.remote_image_url, timeout=10)
-        img = Image.open(BytesIO(response.content))
 
         local_path = Path(f"{local_folder}/{uuid.uuid4()}.png")
 
         local_absolute_path = local_path.resolve()
 
-        img.save(local_absolute_path)
+        save_image_from_url(self.remote_image_url, local_absolute_path)
 
-        file_url = urllib.parse.urljoin(
-            "file:", urllib.parse.quote(str(local_absolute_path))
-        )
+        self.local_image_absolute_path = local_absolute_path
 
-        self.local_image_url = file_url
-
-        print(f"Image local URL: {self.local_image_url}")
+        print(f"Image local URL: {self.local_image_absolute_path}")
 
 
 def generate_html_table(image_data_list):
@@ -79,7 +78,11 @@ def generate_html_table(image_data_list):
 
     for image_data in image_data_list:
         html += "<tr>\n"
-        html += f"<td><img src='{image_data.local_image_url}' alt='Image'></td>\n"
+
+        image_url = urllib.parse.urljoin(
+            "file:", urllib.parse.quote(str(image_data.local_image_absolute_path))
+        )
+        html += f"<td><img src='{image_url}' alt='Image'></td>\n"
         html += f"<td>{image_data.original_prompt}</td>\n"
         html += f"<td>{image_data.revised_prompt}</td>\n"
         html += "</tr>\n"
@@ -249,14 +252,6 @@ def spin_styles_sync(i_prompt, i_folder_path):
         except Exception as e:
             print(f"Error generating image in style of {style}: {e}")
 
-
-# spin_styles_sync("Multiple  Kittens of various breeds, playing in and around a Christmas tree", "./christmas_kittens_hd")
-# spin_styles_sync("Idyllic Lake in the mountains, with a small village on its bank, during winter", "./village_lake_hd")
-# spin_styles_sync("Santa Claus driving a sleigh, reindeer pulling it, taking off from his base at the North Pole", "./santa_hd")
-# spin_styles_sync("Multiple gifts under a christmas tree, with two grey tabby cats sleeping next to them", "/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/cat_gifts_hd")
-# spin_styles_sync("Three young pretty witches in a winter forest celebrating Christmas", "/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/witches_hd")
-# spin_styles_sync("Human developer and robot developer, pair-programming at home at Christmas Eve", "/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/pair_programming_hd")
-# spin_styles_sync("A bustling Santa's Workshop scene, massive in scale, filled with festive cheer and holiday spirit. The workshop is adorned with colorful Christmas decorations, twinkling lights, and a large, ornate Christmas tree. Santa Claus, an elderly Caucasian man with a jovial expression and a traditional red and white suit, oversees the activities. Around him, a diverse group of elves, wearing green and red outfits, are energetically crafting toys and gifts. The elves vary in gender and descent. The workshop is a whirlwind of activity, with elves painting toys, wrapping gifts, and checking lists, all set against a backdrop of snowy windows and a cozy fireplace.", "/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/santa_workshop_hd")
 
 # spin_styles_sync("Christmas", "/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/christmas_sd")
 
