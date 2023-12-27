@@ -36,6 +36,13 @@ import deal
 @deal.pre(lambda _: isinstance(_.save_path, Path))
 @deal.ensure(lambda _: _.save_path.exists())
 def save_image_from_url(url, save_path):
+    """
+    Downloads an image from the given URL and saves it to the specified path.
+
+    Args:
+        url (str): The URL of the image to download.
+        save_path (Path): The path where the downloaded image will be saved.
+    """
     response = requests.get(url, timeout=10)
     img = Image.open(BytesIO(response.content))
     img.save(save_path)
@@ -50,9 +57,9 @@ class ImageData:
         self.original_prompt = original_prompt
         self.revised_prompt = revised_prompt
 
-    def download_image_sync(self, local_folder: str):
+    def download_image_sync(self, local_folder: Path, file_prefix: str):
 
-        local_path = Path(f"{local_folder}/{uuid.uuid4()}.png")
+        local_path = local_folder / Path(f"{file_prefix}-{uuid.uuid4()}.png")
 
         local_absolute_path = local_path.resolve()
 
@@ -106,7 +113,7 @@ def save_html_to_file(html_string, filename):
         file.write(html_string)
 
 
-def generate_image_sync(i_openai_client, i_prompt):
+def generate_image_sync(i_openai_client, i_prompt:str, i_folder_path:Path, i_file_prefix:str) -> ImageData:
     response = i_openai_client.images.generate(
         model="dall-e-3", prompt=i_prompt, size="1024x1024", quality="standard", n=1
     )
@@ -123,11 +130,11 @@ def generate_image_sync(i_openai_client, i_prompt):
     image_revised_prompt = response.data[0].revised_prompt
 
     image_data = ImageData(image_url, i_prompt, image_revised_prompt)
-    image_data.download_image_sync("./test_images")
+    image_data.download_image_sync(i_folder_path, i_file_prefix)
     return image_data
 
 
-def spin_styles_sync(i_prompt, i_folder_path):
+def spin_styles_sync(i_prompt, i_folder_path:Path):
     # Create a folder if it does not exist
     print(f"Creating folder {i_folder_path}...")
 
@@ -142,82 +149,84 @@ def spin_styles_sync(i_prompt, i_folder_path):
     styles = [
         "Abstract Art",
         "Abstract Geometry",
-        "Art Deco",
-        "Art Nouveau",
-        "Bauhaus",
-        "Bokeh Art",
-        "Brutalism in design",
-        "Byzantine Art",
-        "Celtic Art",
-        "Charcoal",
-        "Chinese Brush Painting",
-        "Chiptune Visuals",
-        "Concept Art",
-        "Constructivism",
-        "Cyber Folk",
-        "Cybernetic Art",
-        "Cyberpunk",
-        "Dadaism",
-        "Data Art",
-        "Digital Collage",
-        "Digital Cubism",
-        "Digital Impressionism",
-        "Digital Painting",
-        "Double Exposure",
-        "Dreamy Fantasy",
-        "Dystopian Art",
-        "Etching",
-        "Expressionism",
-        "Fauvism",
-        "Flat Design",
-        "Fractal Art",
-        "Futurism",
-        "Glitch Art",
-        "Gothic Art",
-        "Gouache",
-        "Greco-Roman Art",
-        "Impressionism",
-        "Ink Wash",
-        "Isometric Art",
-        "Japanese Ukiyo-e",
-        "Kinetic Typography",
-        "Lithography",
-        "Low Poly",
-        "Macabre Art",
-        "Magic Realism",
-        "Minimalism",
-        "Modernism",
-        "Monogram",
-        "Mosaic",
-        "Neon Graffiti",
-        "Neon Noir",
-        "Origami",
-        "Papercut",
-        "Parallax Art",
-        "Pastel Drawing",
         "Photorealism",
-        "Pixel Art",
-        "Pointillism",
-        "Polyart",
-        "Pop Art",
-        "Psychedelic Art",
-        "Rennaissance/Baroque",
-        "Retro Wave",
-        "Romanticism",
-        "Sci-Fi Fantasy",
-        "Scratchboard",
-        "Steampunk",
-        "Stippling",
-        "Surrealism",
-        "Symbolism",
-        "Trompe-l'eil",
-        "Vaporwave",
-        "Vector Art",
-        "Voxel Art",
-        "Watercolor",
-        "Woodblock Printing",
-        "Zen Doodle",
     ]
+    #     "Art Deco",
+    #     "Art Nouveau",
+    #     "Bauhaus",
+    #     "Bokeh Art",
+    #     "Brutalism in design",
+    #     "Byzantine Art",
+    #     "Celtic Art",
+    #     "Charcoal",
+    #     "Chinese Brush Painting",
+    #     "Chiptune Visuals",
+    #     "Concept Art",
+    #     "Constructivism",
+    #     "Cyber Folk",
+    #     "Cybernetic Art",
+    #     "Cyberpunk",
+    #     "Dadaism",
+    #     "Data Art",
+    #     "Digital Collage",
+    #     "Digital Cubism",
+    #     "Digital Impressionism",
+    #     "Digital Painting",
+    #     "Double Exposure",
+    #     "Dreamy Fantasy",
+    #     "Dystopian Art",
+    #     "Etching",
+    #     "Expressionism",
+    #     "Fauvism",
+    #     "Flat Design",
+    #     "Fractal Art",
+    #     "Futurism",
+    #     "Glitch Art",
+    #     "Gothic Art",
+    #     "Gouache",
+    #     "Greco-Roman Art",
+    #     "Impressionism",
+    #     "Ink Wash",
+    #     "Isometric Art",
+    #     "Japanese Ukiyo-e",
+    #     "Kinetic Typography",
+    #     "Lithography",
+    #     "Low Poly",
+    #     "Macabre Art",
+    #     "Magic Realism",
+    #     "Minimalism",
+    #     "Modernism",
+    #     "Monogram",
+    #     "Mosaic",
+    #     "Neon Graffiti",
+    #     "Neon Noir",
+    #     "Origami",
+    #     "Papercut",
+    #     "Parallax Art",
+    #     "Pastel Drawing",
+    #     "Photorealism",
+    #     "Pixel Art",
+    #     "Pointillism",
+    #     "Polyart",
+    #     "Pop Art",
+    #     "Psychedelic Art",
+    #     "Rennaissance/Baroque",
+    #     "Retro Wave",
+    #     "Romanticism",
+    #     "Sci-Fi Fantasy",
+    #     "Scratchboard",
+    #     "Steampunk",
+    #     "Stippling",
+    #     "Surrealism",
+    #     "Symbolism",
+    #     "Trompe-l'eil",
+    #     "Vaporwave",
+    #     "Vector Art",
+    #     "Voxel Art",
+    #     "Watercolor",
+    #     "Woodblock Printing",
+    #     "Zen Doodle",
+    # ]
 
     # Loop through the styles
     rate_limit_delay_sec = 1
@@ -232,22 +241,10 @@ def spin_styles_sync(i_prompt, i_folder_path):
         styled_prompt = i_prompt + ", in the style of " + style
 
         try:
-            response = client.images.generate(
-                model="dall-e-3",
-                prompt=styled_prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
+            file_prefix = style.lower().replace(" ", "_")
+            new_generated_entry = generate_image_sync(client, styled_prompt, i_folder_path, file_prefix)
 
-            image_url = response.data[0].url
-
-            # Download the image
-            destination_path = f"{i_folder_path}/{style}.png"
-            print("Downloading and saving image...")
-
-            save_image_from_url(image_url, destination_path)
-            print(f"Image {destination_path} saved.")
+            print(f"Image {new_generated_entry.local_image_absolute_path} saved.")
 
         except Exception as e:
             print(f"Error generating image in style of {style}: {e}")
@@ -260,13 +257,16 @@ ai_client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
-test_image = generate_image_sync(
-    ai_client,
-    "Multiple Kittens of various breeds, playing in and around a Christmas tree",
-)
+# test_image = generate_image_sync(
+#     ai_client,
+#     "Multiple Kittens of various breeds, playing in and around a Christmas tree",
+# )
 
-test_image_list = [test_image]
 
-html_table = generate_html_table(test_image_list)
+spin_styles_sync("2 cats and a dog celebrating a birthday", Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/birthday_sd"))
 
-save_html_to_file(html_table, "./test_images/test.html")
+# test_image_list = [test_image]
+
+# html_table = generate_html_table(test_image_list)
+
+# save_html_to_file(html_table, "./test_images/test.html")
