@@ -9,4 +9,5 @@ dependencies:
       - openai>=1.2.3
       - opencv-python>=4.8.1.78
       - pygame>=2.5.2
+      - deal>=4.24
 
