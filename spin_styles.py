@@ -61,16 +61,56 @@ class ImageData:
     """
 
     def __init__(
-        self, remote_image_url: str, original_prompt: str, revised_prompt: str
+        self, original_prompt: str
     ):
-        self.remote_image_url = remote_image_url
-        self.local_image_absolute_path = ""
         self.original_prompt = original_prompt
-        self.revised_prompt = revised_prompt
+        self.remote_image_url = ""
+        self.local_image_absolute_path = ""
+        self.revised_prompt = ""
+
+    @deal.pre(lambda _: len(_.self.original_prompt) > 0) # Can't generate image without a prompt
+    @deal.pre(lambda _: isinstance(_.self.original_prompt, str))
+    @deal.pre(lambda _: len(_.self.remote_image_url) == 0) # Can't generate image if it's already been generated
+    @deal.pre(lambda _: len(_.self.revised_prompt) == 0) # Can't generate image if it's already been generated
+    @deal.pre(lambda _: len(_.self.local_image_absolute_path) == 0) # Can't generate image if it's already downloaded
+    @deal.ensure(lambda _: len(_.self.remote_image_url) > 0)
+    @deal.ensure(lambda _: len(_.self.revised_prompt) > 0)
+    @deal.ensure(lambda _: isinstance(_.self.remote_image_url, str))
+    @deal.ensure(lambda _: isinstance(_.self.revised_prompt, str))
+    def generate_image_sync(self, openai_client: OpenAI):
+        """
+        Generates an image synchronously from a prompt.
+
+        Args:
+            openai_client (OpenAI): The OpenAI client to use for generating the image.
+        """
+        response = openai_client.images.generate(
+            model="dall-e-3", prompt=self.original_prompt, size="1792x1024", quality="hd", n=1
+        )
+
+        if response.data is None:
+            raise RuntimeError("OpenAI API returned an error: ", response.error)
+
+        if len(response.data) != 1:
+            raise RuntimeError("OpenAI API returned unexpected number of images.")
+
+        # .data is expected to be an array of image objects
+        # https://platform.openai.com/docs/api-reference/images/object
+        image_url = response.data[0].url
+        image_revised_prompt = response.data[0].revised_prompt
+
+        self.remote_image_url = image_url
+        self.revised_prompt = image_revised_prompt
+
+        print(f"Image remote URL: {self.remote_image_url}")
+        print(f"Image revised prompt: {self.revised_prompt}")
 
     @deal.pre(lambda _: isinstance(_.local_folder, Path))
     @deal.pre(lambda _: len(_.file_prefix) > 0)
     @deal.pre(lambda _: isinstance(_.file_prefix, str))
+    @deal.pre(lambda _: _.self.remote_image_url.startswith("http"))
+    @deal.pre(lambda _: isinstance(_.self.remote_image_url, str))
+    @deal.pre(lambda _: len(_.self.local_image_absolute_path) == 0) # Can't download image if it's already downloaded
     @deal.ensure(lambda _: _.self.local_image_absolute_path.exists())
     def download_image_sync(self, local_folder: Path, file_prefix: str):
         """
@@ -89,6 +129,7 @@ class ImageData:
         self.local_image_absolute_path = local_absolute_path
 
         print(f"Image local URL: {self.local_image_absolute_path}")
+
 
 
 def generate_html_table(image_data_list):
@@ -137,22 +178,23 @@ def save_html_to_file(html_string, filename):
 def generate_image_sync(
     i_openai_client, i_prompt: str, i_folder_path: Path, i_file_prefix: str
 ) -> ImageData:
-    response = i_openai_client.images.generate(
-        model="dall-e-3", prompt=i_prompt, size="1024x1024", quality="standard", n=1
-    )
+    # response = i_openai_client.images.generate(
+    #     model="dall-e-3", prompt=i_prompt, size="1792x1024", quality="hd", n=1
+    # )
 
-    if response.data is None:
-        raise RuntimeError("OpenAI API returned an error: ", response.error)
+    # if response.data is None:
+    #     raise RuntimeError("OpenAI API returned an error: ", response.error)
 
-    if len(response.data) != 1:
-        raise RuntimeError("OpenAI API returned unexpected number of images.")
+    # if len(response.data) != 1:
+    #     raise RuntimeError("OpenAI API returned unexpected number of images.")
 
-    # .data is expected to be an array of image objects
-    # https://platform.openai.com/docs/api-reference/images/object
-    image_url = response.data[0].url
-    image_revised_prompt = response.data[0].revised_prompt
+    # # .data is expected to be an array of image objects
+    # # https://platform.openai.com/docs/api-reference/images/object
+    # image_url = response.data[0].url
+    # image_revised_prompt = response.data[0].revised_prompt
 
-    image_data = ImageData(image_url, i_prompt, image_revised_prompt)
+    image_data = ImageData(i_prompt)
+    image_data.generate_image_sync(i_openai_client)
     image_data.download_image_sync(i_folder_path, i_file_prefix)
     return image_data
 
@@ -172,84 +214,85 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
     styles = [
         "Abstract Art",
         "Abstract Geometry",
+        "Art Deco",
+        "Art Nouveau",
+        "Bauhaus",
+        "Bokeh Art",
+        "Brutalism in design",
+        "Byzantine Art",
+        "Celtic Art",
+        "Charcoal",
+        "Chinese Brush Painting",
+        "Chiptune Visuals",
+        "Concept Art",
+        "Constructivism",
+        "Cyber Folk",
+        "Cybernetic Art",
+        "Cyberpunk",
+        "Dadaism",
+        "Data Art",
+        "Digital Collage",
+        "Digital Cubism",
+        "Digital Impressionism",
+        "Digital Painting",
+        "Double Exposure",
+        "Dreamy Fantasy",
+        "Dystopian Art",
+        "Etching",
+        "Expressionism",
+        "Fauvism",
+        "Flat Design",
+        "Fractal Art",
+        "Futurism",
+        "Glitch Art",
+        "Gothic Art",
+        "Gouache",
+        "Greco-Roman Art",
+        "Impressionism",
+        "Ink Wash",
+        "Isometric Art",
+        "Japanese Ukiyo-e",
+        "Kinetic Typography",
+        "Lithography",
+        "Low Poly",
+        "Macabre Art",
+        "Magic Realism",
+        "Minimalism",
+        "Modernism",
+        "Monogram",
+        "Mosaic",
+        "Neon Graffiti",
+        "Neon Noir",
+        "Origami",
+        "Papercut",
+        "Parallax Art",
+        "Pastel Drawing",
         "Photorealism",
+        "Pixel Art",
+        "Pointillism",
+        "Polyart",
+        "Pop Art",
+        "Psychedelic Art",
+        "Rennaissance/Baroque",
+        "Retro Wave",
+        "Romanticism",
+        "Sci-Fi Fantasy",
+        "Scratchboard",
+        "Steampunk",
+        "Stippling",
+        "Surrealism",
+        "Symbolism",
+        "Trompe-l'eil",
+        "Vaporwave",
+        "Vector Art",
+        "Voxel Art",
+        "Watercolor",
+        "Woodblock Printing",
+        "Zen Doodle",
     ]
-    #     "Art Deco",
-    #     "Art Nouveau",
-    #     "Bauhaus",
-    #     "Bokeh Art",
-    #     "Brutalism in design",
-    #     "Byzantine Art",
-    #     "Celtic Art",
-    #     "Charcoal",
-    #     "Chinese Brush Painting",
-    #     "Chiptune Visuals",
-    #     "Concept Art",
-    #     "Constructivism",
-    #     "Cyber Folk",
-    #     "Cybernetic Art",
-    #     "Cyberpunk",
-    #     "Dadaism",
-    #     "Data Art",
-    #     "Digital Collage",
-    #     "Digital Cubism",
-    #     "Digital Impressionism",
-    #     "Digital Painting",
-    #     "Double Exposure",
-    #     "Dreamy Fantasy",
-    #     "Dystopian Art",
-    #     "Etching",
-    #     "Expressionism",
-    #     "Fauvism",
-    #     "Flat Design",
-    #     "Fractal Art",
-    #     "Futurism",
-    #     "Glitch Art",
-    #     "Gothic Art",
-    #     "Gouache",
-    #     "Greco-Roman Art",
-    #     "Impressionism",
-    #     "Ink Wash",
-    #     "Isometric Art",
-    #     "Japanese Ukiyo-e",
-    #     "Kinetic Typography",
-    #     "Lithography",
-    #     "Low Poly",
-    #     "Macabre Art",
-    #     "Magic Realism",
-    #     "Minimalism",
-    #     "Modernism",
-    #     "Monogram",
-    #     "Mosaic",
-    #     "Neon Graffiti",
-    #     "Neon Noir",
-    #     "Origami",
-    #     "Papercut",
-    #     "Parallax Art",
-    #     "Pastel Drawing",
-    #     "Photorealism",
-    #     "Pixel Art",
-    #     "Pointillism",
-    #     "Polyart",
-    #     "Pop Art",
-    #     "Psychedelic Art",
-    #     "Rennaissance/Baroque",
-    #     "Retro Wave",
-    #     "Romanticism",
-    #     "Sci-Fi Fantasy",
-    #     "Scratchboard",
-    #     "Steampunk",
-    #     "Stippling",
-    #     "Surrealism",
-    #     "Symbolism",
-    #     "Trompe-l'eil",
-    #     "Vaporwave",
-    #     "Vector Art",
-    #     "Voxel Art",
-    #     "Watercolor",
-    #     "Woodblock Printing",
-    #     "Zen Doodle",
-    # ]
+
+    styles = ["Anime", "Anime 90s", "Ghibli", "Sfomato", "Emoji"]
+
 
     # Loop through the styles
     rate_limit_delay_sec = 1
@@ -289,8 +332,8 @@ ai_client = OpenAI(
 
 
 spin_styles_sync(
-    "2 cats and a dog celebrating a birthday",
-    Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/birthday_sd"),
+    "Long-haired dwarf with black hair wearing battle armor, YELLING insults at an enormous dark red fire-breathing dragon, inside a giant forge hall within a mountain",
+    Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/erebor_hd"),
 )
 
 # test_image_list = [test_image]
