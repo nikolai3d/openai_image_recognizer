@@ -84,8 +84,10 @@ class ImageData:
         Args:
             openai_client (OpenAI): The OpenAI client to use for generating the image.
         """
+
+        # https://platform.openai.com/docs/api-reference/images/create
         response = openai_client.images.generate(
-            model="dall-e-3", prompt=self.original_prompt, size="1792x1024", quality="hd", n=1
+            model="dall-e-3", prompt=self.original_prompt, size="1024x1024", quality="hd", n=1
         )
 
         if response.data is None:
@@ -178,21 +180,6 @@ def save_html_to_file(html_string, filename):
 def generate_image_sync(
     i_openai_client, i_prompt: str, i_folder_path: Path, i_file_prefix: str
 ) -> ImageData:
-    # response = i_openai_client.images.generate(
-    #     model="dall-e-3", prompt=i_prompt, size="1792x1024", quality="hd", n=1
-    # )
-
-    # if response.data is None:
-    #     raise RuntimeError("OpenAI API returned an error: ", response.error)
-
-    # if len(response.data) != 1:
-    #     raise RuntimeError("OpenAI API returned unexpected number of images.")
-
-    # # .data is expected to be an array of image objects
-    # # https://platform.openai.com/docs/api-reference/images/object
-    # image_url = response.data[0].url
-    # image_revised_prompt = response.data[0].revised_prompt
-
     image_data = ImageData(i_prompt)
     image_data.generate_image_sync(i_openai_client)
     image_data.download_image_sync(i_folder_path, i_file_prefix)
@@ -220,6 +207,7 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
         "Bokeh Art",
         "Brutalism in design",
         "Byzantine Art",
+        "Cartoon",
         "Celtic Art",
         "Charcoal",
         "Chinese Brush Painting",
@@ -238,6 +226,7 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
         "Double Exposure",
         "Dreamy Fantasy",
         "Dystopian Art",
+        "Emoji",
         "Etching",
         "Expressionism",
         "Fauvism",
@@ -278,6 +267,7 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
         "Romanticism",
         "Sci-Fi Fantasy",
         "Scratchboard",
+        "Sfomato",
         "Steampunk",
         "Stippling",
         "Surrealism",
@@ -290,9 +280,6 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
         "Woodblock Printing",
         "Zen Doodle",
     ]
-
-    styles = ["Anime", "Anime 90s", "Ghibli", "Sfomato", "Emoji"]
-
 
     # Loop through the styles
     rate_limit_delay_sec = 1
@@ -325,15 +312,9 @@ ai_client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
-# test_image = generate_image_sync(
-#     ai_client,
-#     "Multiple Kittens of various breeds, playing in and around a Christmas tree",
-# )
-
-
 spin_styles_sync(
-    "Long-haired dwarf with black hair wearing battle armor, YELLING insults at an enormous dark red fire-breathing dragon, inside a giant forge hall within a mountain",
-    Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/erebor_hd"),
+    "A humorous twist on the 'Woman yelling at a cat' meme: On the left, a long-haired, black-haired dwarf man is yelling and pointing finger, his expression showing frustration. On the right, instead of a cat, there's a small, dark-red dragon sitting at a dinner table, looking indifferent and slightly confused. Both characters are cartoonishly depicted.",
+    Path("./meme_sd"),
 )
 
 # test_image_list = [test_image]
