@@ -28,6 +28,7 @@ from PIL import Image
 import requests
 from openai import OpenAI
 import deal
+import logging
 
 
 @deal.pre(lambda _: _.url.startswith("http"))
@@ -60,24 +61,30 @@ class ImageData:
         revised_prompt (str): The revised prompt used to generate the image.
     """
 
-    def __init__(
-        self, original_prompt: str
-    ):
+    def __init__(self, original_prompt: str):
         self.original_prompt = original_prompt
         self.remote_image_url = ""
         self.local_image_absolute_path = ""
         self.revised_prompt = ""
 
-    @deal.pre(lambda _: len(_.self.original_prompt) > 0) # Can't generate image without a prompt
+    @deal.pre(
+        lambda _: len(_.self.original_prompt) > 0
+    )  # Can't generate image without a prompt
     @deal.pre(lambda _: isinstance(_.self.original_prompt, str))
-    @deal.pre(lambda _: len(_.self.remote_image_url) == 0) # Can't generate image if it's already been generated
-    @deal.pre(lambda _: len(_.self.revised_prompt) == 0) # Can't generate image if it's already been generated
-    @deal.pre(lambda _: len(_.self.local_image_absolute_path) == 0) # Can't generate image if it's already downloaded
+    @deal.pre(
+        lambda _: len(_.self.remote_image_url) == 0
+    )  # Can't generate image if it's already been generated
+    @deal.pre(
+        lambda _: len(_.self.revised_prompt) == 0
+    )  # Can't generate image if it's already been generated
+    @deal.pre(
+        lambda _: len(_.self.local_image_absolute_path) == 0
+    )  # Can't generate image if it's already downloaded
     @deal.ensure(lambda _: len(_.self.remote_image_url) > 0)
     @deal.ensure(lambda _: len(_.self.revised_prompt) > 0)
     @deal.ensure(lambda _: isinstance(_.self.remote_image_url, str))
     @deal.ensure(lambda _: isinstance(_.self.revised_prompt, str))
-    def generate_image_sync(self, openai_client: OpenAI):
+    def  generate_image_sync(self, openai_client: OpenAI):
         """
         Generates an image synchronously from a prompt.
 
@@ -87,7 +94,11 @@ class ImageData:
 
         # https://platform.openai.com/docs/api-reference/images/create
         response = openai_client.images.generate(
-            model="dall-e-3", prompt=self.original_prompt, size="1024x1024", quality="hd", n=1
+            model="dall-e-3",
+            prompt=self.original_prompt,
+            size="1024x1024",
+            quality="hd",
+            n=1,
         )
 
         if response.data is None:
@@ -104,15 +115,17 @@ class ImageData:
         self.remote_image_url = image_url
         self.revised_prompt = image_revised_prompt
 
-        print(f"Image remote URL: {self.remote_image_url}")
-        print(f"Image revised prompt: {self.revised_prompt}")
+        logging.info(f"Image remote URL: {self.remote_image_url}")
+        logging.info(f"Image revised prompt: {self.revised_prompt}")
 
     @deal.pre(lambda _: isinstance(_.local_folder, Path))
     @deal.pre(lambda _: len(_.file_prefix) > 0)
     @deal.pre(lambda _: isinstance(_.file_prefix, str))
     @deal.pre(lambda _: _.self.remote_image_url.startswith("http"))
     @deal.pre(lambda _: isinstance(_.self.remote_image_url, str))
-    @deal.pre(lambda _: len(_.self.local_image_absolute_path) == 0) # Can't download image if it's already downloaded
+    @deal.pre(
+        lambda _: len(_.self.local_image_absolute_path) == 0
+    )  # Can't download image if it's already downloaded
     @deal.ensure(lambda _: _.self.local_image_absolute_path.exists())
     def download_image_sync(self, local_folder: Path, file_prefix: str):
         """
@@ -130,8 +143,7 @@ class ImageData:
 
         self.local_image_absolute_path = local_absolute_path
 
-        print(f"Image local URL: {self.local_image_absolute_path}")
-
+        logging.info(f"Image local URL: {self.local_image_absolute_path}")
 
 
 def generate_html_table(image_data_list):
@@ -188,7 +200,7 @@ def generate_image_sync(
 
 def spin_styles_sync(i_prompt, i_folder_path: Path):
     # Create a folder if it does not exist
-    print(f"Creating folder {i_folder_path}...")
+    logging.info(f"Creating folder {i_folder_path}...")
 
     Path(i_folder_path).mkdir(parents=True, exist_ok=True)
 
@@ -262,7 +274,7 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
         "Polyart",
         "Pop Art",
         "Psychedelic Art",
-        "Rennaissance/Baroque",
+        "Rennaissance-Baroque",
         "Retro Wave",
         "Romanticism",
         "Sci-Fi Fantasy",
@@ -285,13 +297,15 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
     rate_limit_delay_sec = 1
     for style in styles:
         # Wait 15 seconds:
+        logging.info(
+            f"Waiting for {rate_limit_delay_sec} seconds to avoid rate limit..."
+        )
         print(f"Waiting for {rate_limit_delay_sec} seconds to avoid rate limit...")
-
         time.sleep(rate_limit_delay_sec)
 
-        print(f"Generating image in the style of {style}...")
+        logging.info(f"Generating image in the style of {style}...")
 
-        styled_prompt = i_prompt + ", in the style of " + style
+        styled_prompt = i_prompt + ". Generate image in the style of " + style + "."
 
         try:
             file_prefix = style.lower().replace(" ", "_")
@@ -299,9 +313,12 @@ def spin_styles_sync(i_prompt, i_folder_path: Path):
                 client, styled_prompt, i_folder_path, file_prefix
             )
 
-            print(f"Image {new_generated_entry.local_image_absolute_path} saved.")
+            logging.info(
+                f"Image {new_generated_entry.local_image_absolute_path} saved."
+            )
 
         except Exception as e:
+            logging.info(f"Error generating image in style of {style}: {e}")
             print(f"Error generating image in style of {style}: {e}")
 
 
@@ -312,11 +329,31 @@ ai_client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
-spin_styles_sync(
-    "A humorous twist on the 'Woman yelling at a cat' meme: On the left, a long-haired, black-haired dwarf man is yelling and pointing finger, his expression showing frustration. On the right, instead of a cat, there's a small, dark-red dragon sitting at a dinner table, looking indifferent and slightly confused. Both characters are cartoonishly depicted.",
-    Path("./meme_sd"),
+
+# spin_styles_sync(
+#     "Retro Futurism",
+#     Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/retro_futurism_hd"),
+# )
+
+
+# Configure logging to write to a file
+logging.basicConfig(
+    filename="/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/atom2_log.txt",
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s:%(message)s",
 )
 
+# Write log messages
+logging.debug("This message is for debugging purposes.")
+logging.info("This is an informational message.")
+logging.warning("This is a warning message.")
+logging.error("This is an error message.")
+logging.critical("This is a critical message.")
+
+spin_styles_sync(
+    "Bohr's model of an atom, a physics textbook illustration, with chemistry lab as a blurry background, ",
+    Path("/home/nikolai3d/Dropbox/AdobeFirefly/Style Spin/atom2_hd"),
+)
 # test_image_list = [test_image]
 
 # html_table = generate_html_table(test_image_list)

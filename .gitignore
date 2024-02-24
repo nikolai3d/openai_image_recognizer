@@ -161,5 +161,6 @@ cython_debug/
 
 *.png
 *.mp3
+*.mp4
 .openai-venv/
 test-images/
